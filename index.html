@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Dashboard de Nascidos Vivos — 14.040 registros SINASC.">
+<meta name="theme-color" content="#0f172a">
+<title>Nascidos Vivos · Dashboard SINASC</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍼</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+/* ── TOKENS ─────────────────────────────────────────────────────────────── */
+:root {
+  --slate-50:  #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --slate-400: #94a3b8;
+  --slate-600: #475569;
+  --slate-800: #1e293b;
+  --slate-900: #0f172a;
+
+  --indigo-500: #6366f1;
+  --indigo-600: #4f46e5;
+  --emerald-500: #10b981;
+  --amber-500:  #f59e0b;
+  --rose-500:   #f43f5e;
+  --sky-500:    #0ea5e9;
+  --violet-500: #8b5cf6;
+  --teal-500:   #14b8a6;
+  --orange-500: #f97316;
+
+  --bg:      var(--slate-100);
+  --surface: #ffffff;
+  --border:  var(--slate-200);
+  --muted:   var(--slate-400);
+  --body:    var(--slate-800);
+
+  --radius-sm: 8px;
+  --radius:    14px;
+  --radius-lg: 20px;
+  --gap: 18px;
+  --shadow: 0 1px 3px rgba(15,23,42,.06), 0 4px 16px rgba(15,23,42,.04);
+  --shadow-hover: 0 4px 12px rgba(15,23,42,.10), 0 12px 32px rgba(15,23,42,.06);
+}
+
+/* ── RESET ──────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--body);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── LAYOUT ─────────────────────────────────────────────────────────────── */
+.wrap { max-width: 1360px; margin: 0 auto; padding: 24px 20px; }
+
+/* ── HEADER ─────────────────────────────────────────────────────────────── */
+.header {
+  background: linear-gradient(135deg, var(--slate-900) 0%, #1e1b4b 100%);
+  border-radius: var(--radius-lg);
+  padding: 28px 32px;
+  margin-bottom: var(--gap);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  position: relative;
+  overflow: hidden;
+}
+.header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 80% at 90% 50%, rgba(99,102,241,.18) 0%, transparent 70%);
+  pointer-events: none;
+}
+.header-left { display: flex; align-items: center; gap: 16px; }
+.header-icon {
+  width: 48px; height: 48px;
+  background: rgba(255,255,255,.1);
+  border-radius: 12px;
+  display: grid; place-items: center;
+  font-size: 24px;
+  flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,.12);
+}
+.header h1 { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: -.3px; }
+.header-meta { font-size: 12px; color: rgba(255,255,255,.5); margin-top: 2px; }
+
+/* ── FILTERS ────────────────────────────────────────────────────────────── */
+.filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.filter-group { display: flex; flex-direction: column; gap: 4px; }
+.filter-group label {
+  font-size: 10px; font-weight: 600; letter-spacing: .6px;
+  color: rgba(255,255,255,.45);
+  text-transform: uppercase;
+}
+.filter-group select {
+  padding: 7px 28px 7px 10px;
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,.08);
+  color: #fff;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23ffffff60'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  transition: border-color .15s, background .15s;
+}
+.filter-group select:hover { border-color: rgba(255,255,255,.3); background-color: rgba(255,255,255,.12); }
+.filter-group select option { background: #1e1b4b; color: #fff; }
+
+/* ── KPI ROW ────────────────────────────────────────────────────────────── */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--gap);
+  margin-bottom: var(--gap);
+}
+.kpi {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow .2s, transform .2s;
+}
+.kpi::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--kpi-color, var(--indigo-500));
+  border-radius: 3px 0 0 3px;
+}
+.kpi:hover { box-shadow: var(--shadow-hover); transform: translateY(-1px); }
+.kpi-icon {
+  font-size: 18px;
+  margin-bottom: 8px;
+  line-height: 1;
+}
+.kpi-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: .3px;
+}
+.kpi-value {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--body);
+  letter-spacing: -1px;
+  line-height: 1.1;
+  margin-top: 4px;
+}
+.kpi-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+/* ── GRID LAYOUTS ───────────────────────────────────────────────────────── */
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--gap);
+  margin-bottom: var(--gap);
+}
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--gap);
+  margin-bottom: var(--gap);
+}
+.col-span-2 { grid-column: span 2; }
+.col-span-3 { grid-column: span 3; }
+
+/* ── CARD ───────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow .2s;
+}
+.card:hover { box-shadow: var(--shadow-hover); }
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.card-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: .3px;
+}
+.card-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--slate-100);
+  color: var(--slate-600);
+  letter-spacing: .3px;
+}
+.chart-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+canvas { width: 100% !important; }
+
+/* ── TABLE ──────────────────────────────────────────────────────────────── */
+.table-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  margin-bottom: var(--gap);
+}
+.table-card-header {
+  padding: 20px 24px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+.table-card-header .card-title { font-size: 13px; color: var(--body); font-weight: 700; letter-spacing: -.1px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+  padding: 10px 16px;
+  background: var(--slate-50);
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  color: var(--muted);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+tbody td { padding: 11px 16px; border-bottom: 1px solid var(--slate-50); vertical-align: middle; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: var(--slate-50); }
+.rank { font-size: 11px; font-weight: 700; color: var(--muted); }
+.badge {
+  display: inline-block; padding: 3px 9px; border-radius: 20px;
+  font-size: 11px; font-weight: 600; max-width: 240px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.badge-indigo  { background: #eef2ff; color: #4338ca; }
+.badge-emerald { background: #d1fae5; color: #065f46; }
+.badge-amber   { background: #fef3c7; color: #92400e; }
+.badge-violet  { background: #ede9fe; color: #5b21b6; }
+.badge-sky     { background: #e0f2fe; color: #0369a1; }
+.n-strong { font-weight: 700; }
+.pbar-wrap { display: flex; align-items: center; gap: 8px; }
+.pbar-bg {
+  width: 72px; height: 6px; border-radius: 6px;
+  background: var(--slate-200); overflow: hidden; flex-shrink: 0;
+}
+.pbar-fill { height: 100%; border-radius: 6px; }
+.pbar-label { font-size: 12px; font-weight: 600; color: var(--slate-800); }
+
+/* ── SECTION LABEL ──────────────────────────────────────────────────────── */
+.section-label {
+  font-size: 11px; font-weight: 700; letter-spacing: .6px;
+  color: var(--muted); margin-bottom: 10px; margin-top: 4px;
+}
+
+/* ── FOOTER ─────────────────────────────────────────────────────────────── */
+footer {
+  text-align: center; padding: 20px 0 8px;
+  color: var(--muted); font-size: 11px;
+}
+footer a { color: var(--indigo-500); text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+
+/* ── RESPONSIVE ─────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .grid-3  { grid-template-columns: 1fr 1fr; }
+  .grid-3 .col-span-3 { grid-column: span 2; }
+  .col-span-2 { grid-column: span 2; }
+}
+@media (max-width: 680px) {
+  .wrap { padding: 14px 12px; }
+  .kpi-row { grid-template-columns: 1fr 1fr; }
+  .grid-3, .grid-2 { grid-template-columns: 1fr; }
+  .grid-3 .col-span-3,
+  .grid-2 .col-span-2 { grid-column: span 1; }
+  .header { flex-direction: column; align-items: flex-start; }
+  .kpi-value { font-size: 26px; }
+  .filters { width: 100%; }
+  .filter-group select { width: 100%; }
+}
+@media (max-width: 400px) {
+  .kpi-row { grid-template-columns: 1fr; }
+}
+@media print {
+  .filters, .header::before { display: none; }
+  .card, .kpi, .table-card { box-shadow: none; border: 1px solid var(--border); }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <div class="header-icon">🍼</div>
+    <div>
+      <h1>Nascidos Vivos · SINASC</h1>
+      <div class="header-meta">14.040 registros · Alvorada, RS · 2023</div>
+    </div>
+  </div>
+  <div class="filters" role="group" aria-label="Filtros">
+    <div class="filter-group">
+      <label for="f-sexo">Sexo</label>
+      <select id="f-sexo" onchange="update()">
+        <option value="">Todos</option>
+        <option value="MASCULINO">Masculino</option>
+        <option value="FEMININO">Feminino</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label for="f-raca">Raça / Cor</label>
+      <select id="f-raca" onchange="update()">
+        <option value="">Todas</option>
+        <option value="BRANCA">Branca</option>
+        <option value="PRETA">Preta</option>
+        <option value="PARDA">Parda</option>
+        <option value="INDÍGENA">Indígena</option>
+        <option value="AMARELA">Amarela</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label for="f-parto">Tipo de parto</label>
+      <select id="f-parto" onchange="update()">
+        <option value="">Todos</option>
+        <option value="VAGINAL">Vaginal</option>
+        <option value="CESAREO">Cesáreo</option>
+      </select>
+    </div>
+  </div>
+</header>
+
+<!-- KPIs -->
+<div class="kpi-row" role="region" aria-label="Indicadores">
+  <div class="kpi" style="--kpi-color: var(--indigo-500)">
+    <div class="kpi-icon">👶</div>
+    <div class="kpi-label">Total de nascimentos</div>
+    <div class="kpi-value" id="kpi-total">14.040</div>
+    <div class="kpi-sub">registros no dataset</div>
+  </div>
+  <div class="kpi" style="--kpi-color: var(--emerald-500)">
+    <div class="kpi-icon">⚖️</div>
+    <div class="kpi-label">Peso médio ao nascer</div>
+    <div class="kpi-value" id="kpi-peso">3.178g</div>
+    <div class="kpi-sub" id="kpi-peso-sub">variação: 253g – 5.640g</div>
+  </div>
+  <div class="kpi" style="--kpi-color: var(--amber-500)">
+    <div class="kpi-icon">🏥</div>
+    <div class="kpi-label">Taxa de cesárea</div>
+    <div class="kpi-value" id="kpi-cesar">49,3%</div>
+    <div class="kpi-sub" id="kpi-cesar-sub">6.923 cesáreos</div>
+  </div>
+  <div class="kpi" style="--kpi-color: var(--rose-500)">
+    <div class="kpi-icon">📉</div>
+    <div class="kpi-label">Baixo peso (&lt;2.500g)</div>
+    <div class="kpi-value" id="kpi-baixopeso">9,5%</div>
+    <div class="kpi-sub" id="kpi-baixopeso-sub">1.333 recém-nascidos</div>
+  </div>
+</div>
+
+<!-- ROW 1: 3 colunas iguais -->
+<p class="section-label">Parto &amp; Distribuição</p>
+<div class="grid-3">
+  <div class="card col-span-2">
+    <div class="card-header">
+      <span class="card-title">Tipo de parto por raça/cor da mãe</span>
+      <span class="card-tag">Barras</span>
+    </div>
+    <div class="chart-wrap" style="min-height:230px">
+      <canvas id="ch-parto-raca" role="img" aria-label="Tipo de parto por raça"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Sexo dos recém-nascidos</span>
+      <span class="card-tag">Rosca</span>
+    </div>
+    <div class="chart-wrap" style="min-height:230px; max-width:260px; margin:0 auto; width:100%">
+      <canvas id="ch-sexo" role="img" aria-label="Sexo dos recém-nascidos"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ROW 2: 3 colunas -->
+<div class="grid-3">
+  <div class="card col-span-2">
+    <div class="card-header">
+      <span class="card-title">Distribuição de peso ao nascer</span>
+      <span class="card-tag">Histograma</span>
+    </div>
+    <div class="chart-wrap" style="min-height:210px">
+      <canvas id="ch-peso-dist" role="img" aria-label="Distribuição de peso ao nascer"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Tipo de gravidez</span>
+      <span class="card-tag">Rosca</span>
+    </div>
+    <div class="chart-wrap" style="min-height:210px; max-width:260px; margin:0 auto; width:100%">
+      <canvas id="ch-gravidez" role="img" aria-label="Tipo de gravidez"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ROW 3: 2 colunas -->
+<p class="section-label">Perfil Materno</p>
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Estado civil da mãe × taxa de cesárea</span>
+      <span class="card-tag">Horizontal</span>
+    </div>
+    <div class="chart-wrap" style="min-height:220px">
+      <canvas id="ch-civil-cesar" role="img" aria-label="Estado civil vs cesárea"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Local de nascimento</span>
+      <span class="card-tag">Rosca</span>
+    </div>
+    <div class="chart-wrap" style="min-height:220px; max-width:280px; margin:0 auto; width:100%">
+      <canvas id="ch-local" role="img" aria-label="Local de nascimento"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ROW 4: full width -->
+<p class="section-label">Peso por Raça/Cor &amp; Sexo</p>
+<div class="grid-2" style="margin-bottom:var(--gap)">
+  <div class="card col-span-2">
+    <div class="card-header">
+      <span class="card-title">Peso médio por raça/cor × sexo (g)</span>
+      <span class="card-tag">Comparativo</span>
+    </div>
+    <div class="chart-wrap" style="min-height:200px">
+      <canvas id="ch-peso-raca-sexo" role="img" aria-label="Peso médio por raça e sexo"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- TABLE -->
+<p class="section-label">Ocupação das Mães</p>
+<div class="table-card" role="region" aria-label="Tabela de ocupações">
+  <div class="table-card-header">
+    <span class="card-title">Top 10 ocupações</span>
+    <span class="card-tag">14.040 nascimentos</span>
+  </div>
+  <div style="overflow-x:auto">
+    <table id="tab-ocup">
+      <thead><tr>
+        <th>#</th>
+        <th>Ocupação</th>
+        <th>Nascimentos</th>
+        <th>% do total</th>
+        <th>Peso médio</th>
+        <th>% cesárea</th>
+      </tr></thead>
+      <tbody id="tab-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<footer>
+  Dashboard SINASC · dados de Alvorada, RS ·
+  <a href="https://sinasc.saude.gov.br/" target="_blank" rel="noopener noreferrer">Fonte: SINASC</a>
+</footer>
+</div><!-- /wrap -->
+
+<script>
+'use strict';
+
+/* ── DATA ─────────────────────────────────────────────────────────────────── */
+const RAW = {
+  total: 14040,
+  parto: { VAGINAL: 7115, CESAREO: 6923 },
+  sexo:  { MASCULINO: 7196, FEMININO: 6843 },
+  gravidez: { 'Única': 13631, 'Dupla': 400, 'Tripla ou mais': 7, 'Ignorado': 2 },
+  civil: {
+    SOLTEIRO:                 { total: 7952,  cesar: 3499 },
+    CASADO:                   { total: 3386,  cesar: 2109 },
+    'UNIAO CONSENSUAL':       { total: 2495,  cesar: 1180 },
+    'SEPARADO JUDICIALMENTE': { total: 191,   cesar: 103  },
+    VIUVO:                    { total: 13,    cesar: 8    },
+  },
+  partoRaca: {
+    Branca:   { VAGINAL: 4502, CESAREO: 5202 },
+    Preta:    { VAGINAL: 1418, CESAREO: 1020 },
+    Parda:    { VAGINAL: 1168, CESAREO: 682  },
+    Indígena: { VAGINAL: 15,   CESAREO: 7    },
+    Amarela:  { VAGINAL: 8,    CESAREO: 7    },
+  },
+  pesoDist: [
+    { label: '<2.000g',       n: 476  },
+    { label: '2.000–2.499g',  n: 857  },
+    { label: '2.500–2.999g',  n: 3041 },
+    { label: '3.000–3.499g',  n: 5560 },
+    { label: '3.500–3.999g',  n: 3419 },
+    { label: '≥4.000g',       n: 687  },
+  ],
+  pesoRacaSexo: {
+    racas:     ['Branca','Preta','Parda','Indígena','Amarela'],
+    masculino: [3233, 3182, 3215, 3214, 3148],
+    feminino:  [3139, 3105, 3127, 3151, 3098],
+  },
+  ocupTopRaw: [
+    { ocup: 'Dona de casa',                           n: 5034, pesoMed: 3162, pcesar: 44.1 },
+    { ocup: 'Estudante',                              n: 596,  pesoMed: 3089, pcesar: 36.7 },
+    { ocup: 'Empregado doméstico — serv. gerais',     n: 464,  pesoMed: 3140, pcesar: 41.2 },
+    { ocup: 'Representante comercial autônomo',       n: 458,  pesoMed: 3201, pcesar: 56.8 },
+    { ocup: 'Assistente administrativo',              n: 415,  pesoMed: 3195, pcesar: 58.3 },
+    { ocup: 'Operador de caixa',                      n: 353,  pesoMed: 3155, pcesar: 48.4 },
+    { ocup: 'Advogado',                               n: 334,  pesoMed: 3215, pcesar: 71.3 },
+    { ocup: 'Vendedor de comércio varejista',         n: 313,  pesoMed: 3178, pcesar: 50.2 },
+    { ocup: 'Técnico de enfermagem',                  n: 298,  pesoMed: 3202, pcesar: 60.1 },
+    { ocup: 'Auxiliar de escritório',                 n: 271,  pesoMed: 3188, pcesar: 55.7 },
+  ],
+};
+
+/* ── LOOKUP ───────────────────────────────────────────────────────────────── */
+const LOOKUP = {"MASCULINO|BRANCA|VAGINAL":{"total":2228,"baixo":146},"MASCULINO|BRANCA|CESAREO":{"total":2735,"baixo":266},"MASCULINO|BRANCA|":{"total":4963,"baixo":412},"MASCULINO|PRETA|VAGINAL":{"total":743,"baixo":44},"MASCULINO|PRETA|CESAREO":{"total":536,"baixo":79},"MASCULINO|PRETA|":{"total":1279,"baixo":123},"MASCULINO|PARDA|VAGINAL":{"total":571,"baixo":42},"MASCULINO|PARDA|CESAREO":{"total":359,"baixo":40},"MASCULINO|PARDA|":{"total":930,"baixo":82},"MASCULINO|INDÍGENA|VAGINAL":{"total":9,"baixo":0},"MASCULINO|INDÍGENA|CESAREO":{"total":3,"baixo":1},"MASCULINO|INDÍGENA|":{"total":12,"baixo":1},"MASCULINO|AMARELA|VAGINAL":{"total":4,"baixo":0},"MASCULINO|AMARELA|CESAREO":{"total":3,"baixo":0},"MASCULINO|AMARELA|":{"total":7,"baixo":0},"MASCULINO||VAGINAL":{"total":3558,"baixo":232},"MASCULINO||CESAREO":{"total":3638,"baixo":387},"MASCULINO||":{"total":7196,"baixo":619},"FEMININO|BRANCA|VAGINAL":{"total":2274,"baixo":158},"FEMININO|BRANCA|CESAREO":{"total":2467,"baixo":322},"FEMININO|BRANCA|":{"total":4742,"baixo":480},"FEMININO|PRETA|VAGINAL":{"total":674,"baixo":69},"FEMININO|PRETA|CESAREO":{"total":484,"baixo":73},"FEMININO|PRETA|":{"total":1158,"baixo":142},"FEMININO|PARDA|VAGINAL":{"total":597,"baixo":50},"FEMININO|PARDA|CESAREO":{"total":323,"baixo":41},"FEMININO|PARDA|":{"total":921,"baixo":91},"FEMININO|INDÍGENA|VAGINAL":{"total":6,"baixo":1},"FEMININO|INDÍGENA|CESAREO":{"total":4,"baixo":0},"FEMININO|INDÍGENA|":{"total":10,"baixo":1},"FEMININO|AMARELA|VAGINAL":{"total":5,"baixo":0},"FEMININO|AMARELA|CESAREO":{"total":3,"baixo":0},"FEMININO|AMARELA|":{"total":8,"baixo":0},"FEMININO||VAGINAL":{"total":3556,"baixo":278},"FEMININO||CESAREO":{"total":3285,"baixo":436},"FEMININO||":{"total":6843,"baixo":714},"|BRANCA|VAGINAL":{"total":4502,"baixo":304},"|BRANCA|CESAREO":{"total":5202,"baixo":588},"|BRANCA|":{"total":9705,"baixo":892},"|PRETA|VAGINAL":{"total":1418,"baixo":113},"|PRETA|CESAREO":{"total":1020,"baixo":152},"|PRETA|":{"total":2438,"baixo":265},"|PARDA|VAGINAL":{"total":1168,"baixo":92},"|PARDA|CESAREO":{"total":682,"baixo":81},"|PARDA|":{"total":1851,"baixo":173},"|INDÍGENA|VAGINAL":{"total":15,"baixo":1},"|INDÍGENA|CESAREO":{"total":7,"baixo":1},"|INDÍGENA|":{"total":22,"baixo":2},"|AMARELA|VAGINAL":{"total":9,"baixo":0},"|AMARELA|CESAREO":{"total":6,"baixo":0},"|AMARELA|":{"total":15,"baixo":0},"||VAGINAL":{"total":7115,"baixo":510},"||CESAREO":{"total":6923,"baixo":823},"||":{"total":14040,"baixo":1333}};
+
+/* ── PALETTE ──────────────────────────────────────────────────────────────── */
+const P = {
+  indigo:  '#6366f1',
+  emerald: '#10b981',
+  amber:   '#f59e0b',
+  rose:    '#f43f5e',
+  sky:     '#0ea5e9',
+  violet:  '#8b5cf6',
+  teal:    '#14b8a6',
+  orange:  '#f97316',
+  slate:   '#94a3b8',
+};
+const alpha = (hex, a) => hex + Math.round(a * 255).toString(16).padStart(2,'0');
+
+Chart.defaults.font.family = "'Inter', -apple-system, sans-serif";
+Chart.defaults.font.size = 12;
+Chart.defaults.color = '#94a3b8';
+Chart.defaults.plugins.tooltip.backgroundColor = '#1e293b';
+Chart.defaults.plugins.tooltip.titleColor = '#f1f5f9';
+Chart.defaults.plugins.tooltip.bodyColor = '#94a3b8';
+Chart.defaults.plugins.tooltip.padding = 10;
+Chart.defaults.plugins.tooltip.cornerRadius = 8;
+Chart.defaults.plugins.tooltip.borderColor = '#334155';
+Chart.defaults.plugins.tooltip.borderWidth = 1;
+
+/* ── CHART HELPERS ────────────────────────────────────────────────────────── */
+const charts = {};
+function mkChart(id, cfg) {
+  if (charts[id]) charts[id].destroy();
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  charts[id] = new Chart(canvas.getContext('2d'), cfg);
+}
+
+const gridOpts = {
+  grid: { color: '#f1f5f9', drawBorder: false },
+  ticks: { color: '#94a3b8' },
+  border: { dash: [3, 3], color: '#e2e8f0' },
+};
+
+/* ── BUILDERS ─────────────────────────────────────────────────────────────── */
+function buildPartoRaca() {
+  const racas = Object.keys(RAW.partoRaca);
+  mkChart('ch-parto-raca', {
+    type: 'bar',
+    data: {
+      labels: racas,
+      datasets: [
+        { label: 'Vaginal',  data: racas.map(r => RAW.partoRaca[r].VAGINAL),
+          backgroundColor: alpha(P.indigo, .85), borderRadius: 4, borderSkipped: false },
+        { label: 'Cesáreo', data: racas.map(r => RAW.partoRaca[r].CESAREO),
+          backgroundColor: alpha(P.amber, .85),  borderRadius: 4, borderSkipped: false },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16 } } },
+      scales: {
+        x: { ...gridOpts, stacked: false },
+        y: { ...gridOpts, beginAtZero: true, ticks: { ...gridOpts.ticks, callback: v => v.toLocaleString('pt-BR') } }
+      }
+    }
+  });
+}
+
+function buildPesoDist() {
+  const d = RAW.pesoDist;
+  const colors = [P.rose, P.orange, P.amber, P.indigo, P.emerald, P.sky];
+  mkChart('ch-peso-dist', {
+    type: 'bar',
+    data: {
+      labels: d.map(r => r.label),
+      datasets: [{
+        label: 'Recém-nascidos',
+        data: d.map(r => r.n),
+        backgroundColor: colors.map(c => alpha(c, .85)),
+        borderRadius: 4, borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ...gridOpts },
+        y: { ...gridOpts, beginAtZero: true, ticks: { ...gridOpts.ticks, callback: v => v.toLocaleString('pt-BR') } }
+      }
+    }
+  });
+}
+
+function buildSexo() {
+  mkChart('ch-sexo', {
+    type: 'doughnut',
+    data: {
+      labels: ['Masculino', 'Feminino'],
+      datasets: [{
+        data: [RAW.sexo.MASCULINO, RAW.sexo.FEMININO],
+        backgroundColor: [alpha(P.indigo, .9), alpha(P.rose, .9)],
+        borderWidth: 0,
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      cutout: '68%',
+      plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16 } } }
+    }
+  });
+}
+
+function buildCivilCesar() {
+  const labels = ['Solteira', 'Casada', 'União consensual', 'Sep. judicial', 'Viúva'];
+  const keys   = ['SOLTEIRO','CASADO','UNIAO CONSENSUAL','SEPARADO JUDICIALMENTE','VIUVO'];
+  const pcts   = keys.map(k => +(RAW.civil[k].cesar / RAW.civil[k].total * 100).toFixed(1));
+  mkChart('ch-civil-cesar', {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: '% cesárea',
+        data: pcts,
+        backgroundColor: pcts.map(v => alpha(v > 50 ? P.amber : P.indigo, .85)),
+        borderRadius: 4, borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ...gridOpts, max: 100, ticks: { ...gridOpts.ticks, callback: v => v + '%' } },
+        y: { ...gridOpts }
+      }
+    }
+  });
+}
+
+function buildGravidez() {
+  const g = RAW.gravidez;
+  mkChart('ch-gravidez', {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(g),
+      datasets: [{
+        data: Object.values(g),
+        backgroundColor: [alpha(P.emerald,.9), alpha(P.sky,.9), alpha(P.violet,.9), alpha(P.slate,.9)],
+        borderWidth: 0,
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      cutout: '68%',
+      plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16 } } }
+    }
+  });
+}
+
+function buildLocal() {
+  mkChart('ch-local', {
+    type: 'doughnut',
+    data: {
+      labels: ['Hospital', 'Domicílio', 'Outros', 'Outro estab.'],
+      datasets: [{
+        data: [13922, 89, 23, 6],
+        backgroundColor: [alpha(P.teal,.9), alpha(P.orange,.9), alpha(P.violet,.9), alpha(P.slate,.9)],
+        borderWidth: 0,
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      cutout: '68%',
+      plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16 } } }
+    }
+  });
+}
+
+function buildPesoRacaSexo() {
+  const d = RAW.pesoRacaSexo;
+  mkChart('ch-peso-raca-sexo', {
+    type: 'bar',
+    data: {
+      labels: d.racas,
+      datasets: [
+        { label: 'Masculino', data: d.masculino, backgroundColor: alpha(P.indigo,.85), borderRadius: 4, borderSkipped: false },
+        { label: 'Feminino',  data: d.feminino,  backgroundColor: alpha(P.rose,.85),   borderRadius: 4, borderSkipped: false },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16 } } },
+      scales: {
+        x: { ...gridOpts },
+        y: { ...gridOpts, min: 3000, ticks: { ...gridOpts.ticks, callback: v => v + 'g' } }
+      }
+    }
+  });
+}
+
+function buildTable() {
+  const total = RAW.total;
+  const tbody = document.getElementById('tab-body');
+  const badgeClasses = ['badge-indigo','badge-emerald','badge-amber','badge-violet','badge-sky',
+                        'badge-indigo','badge-emerald','badge-amber','badge-violet','badge-sky'];
+  tbody.innerHTML = RAW.ocupTopRaw.map((r, i) => {
+    const pColor = r.pcesar > 50 ? '#f59e0b' : '#6366f1';
+    return `<tr>
+      <td><span class="rank">${i + 1}</span></td>
+      <td><span class="badge ${badgeClasses[i]}">${r.ocup}</span></td>
+      <td><span class="n-strong">${r.n.toLocaleString('pt-BR')}</span></td>
+      <td>${(r.n / total * 100).toFixed(1)}%</td>
+      <td>${r.pesoMed.toLocaleString('pt-BR')}g</td>
+      <td>
+        <div class="pbar-wrap">
+          <div class="pbar-bg" role="progressbar" aria-valuenow="${r.pcesar}" aria-valuemin="0" aria-valuemax="100">
+            <div class="pbar-fill" style="width:${r.pcesar}%;background:${pColor}"></div>
+          </div>
+          <span class="pbar-label">${r.pcesar}%</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function updateKPIs() {
+  document.getElementById('kpi-total').textContent = RAW.total.toLocaleString('pt-BR');
+  document.getElementById('kpi-peso').textContent = '3.178g';
+  const cesarPct = (RAW.parto.CESAREO / RAW.total * 100).toFixed(1).replace('.', ',');
+  document.getElementById('kpi-cesar').textContent = cesarPct + '%';
+  document.getElementById('kpi-cesar-sub').textContent = RAW.parto.CESAREO.toLocaleString('pt-BR') + ' cesáreos';
+  const baixo = RAW.pesoDist[0].n + RAW.pesoDist[1].n;
+  document.getElementById('kpi-baixopeso').textContent = (baixo / RAW.total * 100).toFixed(1).replace('.', ',') + '%';
+  document.getElementById('kpi-baixopeso-sub').textContent = baixo.toLocaleString('pt-BR') + ' recém-nascidos';
+}
+
+function buildAll() {
+  buildPartoRaca();
+  buildPesoDist();
+  buildSexo();
+  buildCivilCesar();
+  buildGravidez();
+  buildLocal();
+  buildPesoRacaSexo();
+  buildTable();
+  updateKPIs();
+}
+
+/* ── FILTER ───────────────────────────────────────────────────────────────── */
+function update() {
+  const sexo  = document.getElementById('f-sexo').value;
+  const raca  = document.getElementById('f-raca').value;
+  const parto = document.getElementById('f-parto').value;
+  const key = `${sexo}|${raca}|${parto}`;
+  const d = LOOKUP[key];
+  if (!d) return;
+  const total = d.total;
+  const baixo = d.baixo;
+  const cesar = parto === 'VAGINAL'  ? 0 :
+                parto === 'CESAREO' ? total :
+                (LOOKUP[`${sexo}|${raca}|CESAREO`] || { total: 0 }).total;
+  document.getElementById('kpi-total').textContent = total.toLocaleString('pt-BR');
+  document.getElementById('kpi-cesar').textContent = total > 0 ? (cesar / total * 100).toFixed(1).replace('.', ',') + '%' : '—';
+  document.getElementById('kpi-cesar-sub').textContent = cesar.toLocaleString('pt-BR') + ' cesáreos';
+  document.getElementById('kpi-baixopeso').textContent = total > 0 ? (baixo / total * 100).toFixed(1).replace('.', ',') + '%' : '—';
+  document.getElementById('kpi-baixopeso-sub').textContent = baixo.toLocaleString('pt-BR') + ' recém-nascidos';
+}
+
+document.addEventListener('DOMContentLoaded', buildAll);
+</script>
+</body>
+</html>
